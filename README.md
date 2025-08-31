@@ -189,3 +189,164 @@ Using Process Monitor, you can observe the patched loader consistently writing t
   <img src="images/modules_on_disk.png" alt="Branch condition" width="1000"/>
 </p>
 
+---
+
+## Module Integrity Checks
+
+If you're still here, I suppose you want to know more than just how to simply dump the modules from the anti-cheat, right?
+
+Well, I’ve got something interesting for you. Valve performs integrity checks on the modules before loading them. The routine is as follows—can you spot anything interesting?
+
+```cpp
+state_code __cdecl check_module_integrity(
+        IMAGE_DOS_HEADER *module_dos_header_array,
+        unsigned int buffer_size,
+        int a3,
+        unsigned int a4)
+{
+  unsigned int e_lfanew; // edx
+  _WORD *v6; // eax
+  int *v7; // edi
+  int *v8; // ecx
+  _DWORD *v9; // esi
+  char *v10; // eax
+  int v11; // edi
+  int v12; // edi
+  int v13; // edx
+  char v14; // dl
+  unsigned int v15; // esi
+  size_t v16; // edi
+  bool v17; // zf
+  char *v18; // eax
+  int v19; // [esp-Ch] [ebp-C4h]
+  _BYTE v20[128]; // [esp+4h] [ebp-B4h] BYREF
+  WORD *p_e_sp; // [esp+84h] [ebp-34h]
+  _DWORD v22[4]; // [esp+88h] [ebp-30h] BYREF
+  char *v23; // [esp+98h] [ebp-20h]
+  _DWORD *v24; // [esp+9Ch] [ebp-1Ch]
+  char *v25; // [esp+A0h] [ebp-18h]
+  _DWORD *v26; // [esp+A4h] [ebp-14h]
+  int v27; // [esp+A8h] [ebp-10h]
+  int v28; // [esp+ACh] [ebp-Ch]
+  int v29; // [esp+B0h] [ebp-8h]
+  char *v30; // [esp+B4h] [ebp-4h]
+  char *buffer_sizea; // [esp+C4h] [ebp+Ch]
+  char buffer_size_3; // [esp+C7h] [ebp+Fh]
+
+  if ( buffer_size < 0x200 )
+    return error;
+  if ( module_dos_header_array->e_magic != 'ZM' )// DOS_HEADER e_magic -> MZ
+    return error;
+  e_lfanew = module_dos_header_array->e_lfanew;
+  if ( e_lfanew < 0x40 || e_lfanew >= buffer_size - 248 || *(&module_dos_header_array->e_magic + e_lfanew) != 'EP' )// PE_HEADER
+    return error;
+  if ( *&module_dos_header_array[1].e_magic != 'VLV' ) 
+    return not_VLV_8;
+  if ( *&module_dos_header_array[1].e_cp != 1 ) // Module should have 1 page = 512 bytes
+    return more_than_1_page;
+  if ( buffer_size < *&module_dos_header_array[1].e_cparhdr )// Buffer must be bigger than module header
+    return small_buffer;
+  v30 = 0;
+  buffer_sizea = 0;
+  v6 = (&module_dos_header_array->e_lfarlc + e_lfanew);
+  if ( *v6 == 267 )                             // Integrity check
+  {
+    v30 = &module_dos_header_array->e_lfarlc + e_lfanew;
+    goto LABEL_15;
+  }
+  if ( *v6 != 523 )
+    return small_buffer;
+  buffer_sizea = &module_dos_header_array->e_lfarlc + e_lfanew;
+LABEL_15:
+  p_e_sp = &module_dos_header_array[1].e_sp;
+  qmemcpy(v20, &module_dos_header_array[1].e_sp, sizeof(v20));
+  memset(&module_dos_header_array[1].e_sp, 0, 0x80u);
+  v7 = (buffer_sizea + 64);
+  v24 = buffer_sizea + 64;
+  v8 = (buffer_sizea + 144);
+  v23 = buffer_sizea + 144;
+  v9 = v30 + 64;
+  v26 = v30 + 64;
+  v10 = v30 + 128;
+  v25 = v30 + 128;
+  if ( v30 )
+  {
+    v11 = *v9;
+    *v9 = 0;
+    v29 = v11;
+    v28 = *v10;
+    v12 = *(v10 + 1);
+    *v10 = 0;
+    v27 = v12;
+    *(v10 + 1) = 0;
+  }
+  else
+  {
+    v13 = *v7;
+    *v7 = 0;
+    v29 = v13;
+    v28 = *v8;
+    v27 = *(buffer_sizea + 37);
+    *v8 = 0;
+    *(buffer_sizea + 37) = 0;
+    v26 = v9;
+    v25 = v10;
+    v24 = buffer_sizea + 64;
+    v23 = buffer_sizea + 144;
+  }
+  v14 = 0;
+  v15 = 0;
+  while ( v15 < a4 )
+  {
+    v16 = *&module_dos_header_array[1].e_cparhdr;
+    v22[1] = 1;
+    v22[2] = 0;
+    v19 = *(a3 + 4 * v15);
+    v22[3] = 0;
+    v22[0] = &off_6F91E0DC;
+    if ( sub_6F7132E0(v19) && sub_6F713050(v22) )
+    {
+      buffer_size_3 = sub_6F713860(module_dos_header_array, v16, v20, 128, v22);
+      sub_6F712F50(v22);
+      v14 = buffer_size_3;
+      ++v15;
+      if ( buffer_size_3 )
+        break;
+    }
+    else
+    {
+      sub_6F712F50(v22);
+      v14 = 0;
+      ++v15;
+    }
+  }
+  v17 = v30 == 0;
+  qmemcpy(p_e_sp, v20, 0x80u);
+  if ( v17 )
+  {
+    *v24 = v29;
+    v18 = v23;
+  }
+  else
+  {
+    *v26 = v29;
+    v18 = v25;
+  }
+  *v18 = v28;
+  *(v18 + 1) = v27;
+  return v14 == 0;
+}
+```
+
+If you look closely, there are checks for common Portable Executable files, determining sections and headers. But did you notice this check?
+
+```cpp
+  if ( *&module_dos_header_array[1].e_magic != 'VLV' ) 
+      return not_VLV_8;
+```
+This accesses the first byte immediately following the _IMAGE_DOS_HEADER, which is at offset 0x40 (64 bytes from the start of the header), to check for the VLV (VALVE) signature. If our assumption is correct, every module written to disk should contain this signature at offset 0x40 from the IMAGE_DOS_HEADER. We verified this using PE-bear to inspect the modules and... voila.
+
+
+<p align="center">
+  <img src="images/vlv_signature.png" alt="Branch condition" width="1000"/>
+</p>

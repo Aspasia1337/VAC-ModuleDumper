@@ -31,8 +31,6 @@ The system can be summarized as follows:
 - **Client-side (VAC core):** Receives, validates, maps, and executes the streamed modules in a controlled environment.  
 - **Security model:** Dynamic streaming prevents reverse engineers from relying on static binaries, enabling Valve to iterate rapidly on detection methods while reducing the attack surface.
 
-This architecture ensures VAC remains agile against evolving cheat techniques and maintains a hardened defensive posture.
-
 ---
 
 ## The Routine Responsible for Loading
@@ -69,8 +67,7 @@ The structure is passed as the first argument to the function and maintains all 
   <img src="images/graph.png" alt="Control Graph" width="700"/>
 </p>
 
-These two flows correspond to the two primary methods Valve employs to load streamed modules. The first method is **manual mapping**: after mapping the module into memory, the loader retrieves the exported entry point "_runfunc@20" and stores it in the `VLV_STRUCT` instance. The `manual_map` function performs several key operations, which are discussed in detail later.
-
+These two flows correspond to the two primary methods Valve employs to load streamed modules. The first method is **manual mapping**: after mapping the module into memory, the loader retrieves the exported entry point "_runfunc@20" and stores it in the `VLV_STRUCT` instance.
 ```cpp
 if ( (module_flags & 2) != 0 )              // Manual mapping module load
 {

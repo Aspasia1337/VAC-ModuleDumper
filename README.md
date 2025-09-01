@@ -8,7 +8,7 @@ How this library is loaded depends on the privilege level at which Steam is laun
 - When Steam runs without administrative rights, **steamservice.dll** is executed by **SteamService.exe**.  
 - When Steam is launched with elevated privileges, the DLL is instead loaded directly by **steam.exe**.
 
-This difference is not trivial but a fundamental architectural choice. It is crucial for dumping modules in the way I will explain, because you need to pick the second option—running Steam as administrator—so that **steam.exe** directly loads **steamservice.dll**.
+This difference is not trivial but a fundamental architectural choice. It is crucial for dumping modules in the way I will explain, because you need to pick the second option—running Steam as administrator, so that **steam.exe** directly loads **steamservice.dll**.
 
 ---
 
@@ -158,7 +158,7 @@ Knowing this, and considering that the second execution path drops the module in
   <img src="images/x64_pre_patch.png" alt="Branch condition" width="1000"/>
 </p>
 
-Knowing this, we coded a C++ program that attaches to the target process, resolves the base address of `steamservice.dll`, and modifies the instruction at the conditional jump. The patch forces the branch to always be taken, effectively making the loader use the disk-based code path every time.
+Knowing this, we coded a [C++ program](https://github.com/Aspasia1337/VAC-ModuleDumper/blob/main/src/cpp/ModDumper.cpp) that attaches to the target process, resolves the base address of `steamservice.dll`, and modifies the instruction at the conditional jump. The patch forces the branch to always be taken, effectively making the loader use the disk-based code path every time.
 
 In the unmodified binary, the sequence looks like this:
 ```
@@ -195,7 +195,7 @@ Using Process Monitor, you can observe the patched loader consistently writing t
 
 If you're still here, I suppose you want to know more than just how to simply dump the modules from the anti-cheat, right?
 
-Well, I’ve got something interesting for you. Valve performs integrity checks on the modules before loading them. The routine is as follows—can you spot anything interesting?
+Well, I’ve got something interesting for you. Valve performs integrity checks on the modules before loading them. The routine is as follows, can you spot anything interesting?
 
 ```cpp
 state_code __cdecl check_module_integrity(
@@ -350,3 +350,11 @@ This accesses the first byte immediately following the _IMAGE_DOS_HEADER, which 
 <p align="center">
   <img src="images/vlv_signature.png" alt="Branch condition" width="1000"/>
 </p>
+
+## Closing Thoughts
+
+Now that you know how to dump VAC modules, you can inspect them directly, understand what the anti-cheat actually checks, and explore ways to analyze or bypass certain routines. That said, **steamservice.dll** and, in particular, its **manual mapping mechanism**, are worth a closer look. While I won’t cover all the details in this post, observing how Steam maps a file with manual mapping and comparing it with its own approach can teach you a tremendous amount.  
+
+I won’t be sharing the IDA database for my files, so you’re encouraged to reverse them yourself and explore the details firsthand. If you have any questions or want to discuss your findings, **don’t hesitate to reach out**, and we can review it together.  
+
+For any reverse engineer, understanding these techniques is incredibly valuable. 
